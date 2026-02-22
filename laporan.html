@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pusat Laporan - Sarpras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="md:ml-64 pt-16 min-h-screen">
+        <main class="p-6">
+            <h1 class="text-2xl font-bold text-slate-800 mb-2">Pusat Laporan & Cetak</h1>
+            <p class="text-sm text-slate-500 mb-6">Cetak dokumen administrasi sarpras sesuai standar sekolah.</p>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                
+                <!-- Card Laporan Aset -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                    <div class="h-12 w-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fas fa-print text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">Laporan Aset (KIB)</h3>
+                    <p class="text-sm text-slate-500 mb-4">Daftar seluruh inventaris barang per ruangan atau keseluruhan.</p>
+                    <button onclick="printReport('aset')" class="w-full bg-slate-800 text-white py-2 rounded text-sm hover:bg-slate-700">Cetak PDF</button>
+                </div>
+
+                <!-- Card Peminjaman -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                    <div class="h-12 w-12 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fas fa-file-contract text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">Laporan Peminjaman</h3>
+                    <p class="text-sm text-slate-500 mb-4">Rekapitulasi sirkulasi barang peminjaman siswa/guru.</p>
+                    <button onclick="printReport('peminjaman')" class="w-full bg-slate-800 text-white py-2 rounded text-sm hover:bg-slate-700">Cetak PDF</button>
+                </div>
+
+                <!-- Card BHP -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                    <div class="h-12 w-12 bg-orange-100 text-orange-600 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fas fa-pencil-ruler text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">Stok Habis Pakai</h3>
+                    <p class="text-sm text-slate-500 mb-4">Laporan stok opname barang habis pakai (ATK).</p>
+                    <button onclick="printReport('bhp')" class="w-full bg-slate-800 text-white py-2 rounded text-sm hover:bg-slate-700">Cetak PDF</button>
+                </div>
+                
+                <!-- Card Perawatan -->
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition">
+                    <div class="h-12 w-12 bg-red-100 text-red-600 rounded-lg flex items-center justify-center mb-4">
+                        <i class="fas fa-tools text-xl"></i>
+                    </div>
+                    <h3 class="font-bold text-lg mb-2">Laporan Perawatan</h3>
+                    <p class="text-sm text-slate-500 mb-4">History perbaikan dan biaya maintenance aset.</p>
+                    <button onclick="printReport('perawatan')" class="w-full bg-slate-800 text-white py-2 rounded text-sm hover:bg-slate-700">Cetak PDF</button>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        initLayout();
+        const user = JSON.parse(localStorage.getItem('sarpras_user'));
+
+        // Fungsi Cetak Canggih (Generating Clean HTML Window)
+        async function printReport(type) {
+            let title = '';
+            let content = '';
+            let headers = [];
+            let rows = [];
+
+            // 1. Fetch Data Berdasarkan Tipe
+            if(type === 'aset') {
+                title = 'LAPORAN KARTU INVENTARIS BARANG (KIB)';
+                const { data } = await sb.from('inventaris').select('*, ruangan(nama)').eq('school_id', user.school_id);
+                headers = ['Kode', 'Nama Barang', 'Merk', 'Tahun', 'Ruangan', 'Kondisi'];
+                rows = data.map(i => `
+                    <tr>
+                        <td>${i.kode}</td>
+                        <td>${i.nama}</td>
+                        <td>${i.merk || '-'}</td>
+                        <td>${i.tahun_pembelian || '-'}</td>
+                        <td>${i.ruangan?.nama || '-'}</td>
+                        <td>${i.kondisi}</td>
+                    </tr>`);
+            } 
+            else if (type === 'peminjaman') {
+                title = 'LAPORAN SIRKULASI PEMINJAMAN';
+                const { data } = await sb.from('peminjaman').select('*').eq('school_id', user.school_id);
+                headers = ['Peminjam', 'Barang', 'Tgl Pinjam', 'Tgl Kembali', 'Status'];
+                rows = data.map(i => `
+                    <tr>
+                        <td>${i.peminjam_nama}</td>
+                        <td>${i.barang_nama}</td>
+                        <td>${i.tanggal_pinjam}</td>
+                        <td>${i.tanggal_kembali}</td>
+                        <td>${i.status}</td>
+                    </tr>`);
+            }
+            // ... Tambahkan logika untuk BHP dan Perawatan serupa ...
+            else if (type === 'bhp') {
+                title = 'LAPORAN STOK BARANG HABIS PAKAI (ATK)';
+                const { data } = await sb.from('barang_habis_pakai').select('*').eq('school_id', user.school_id);
+                headers = ['Nama Barang', 'Satuan', 'Stok Minimal', 'Stok Saat Ini'];
+                rows = data.map(i => `
+                    <tr>
+                        <td>${i.nama}</td>
+                        <td>${i.satuan}</td>
+                        <td>${i.stok_minimum}</td>
+                        <td>${i.stok_saat_ini}</td>
+                    </tr>`);
+            }
+
+            // 2. Generate HTML Structure untuk Print
+            const printWindow = window.open('', '', 'width=800,height=600');
+            printWindow.document.write(`
+                <html>
+                <head>
+                    <title>${title}</title>
+                    <style>
+                        body { font-family: Arial, sans-serif; padding: 20px; }
+                        .header { text-align: center; margin-bottom: 30px; border-bottom: 2px solid black; padding-bottom: 10px; }
+                        .header h1 { margin: 0; font-size: 18px; }
+                        .header h2 { margin: 5px 0; font-size: 14px; font-weight: normal; }
+                        table { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 12px; }
+                        th, td { border: 1px solid #000; padding: 8px; text-align: left; }
+                        th { background-color: #f0f0f0; }
+                        .footer { margin-top: 50px; text-align: right; font-size: 12px; }
+                        @media print {
+                            @page { margin: 1cm; size: A4; }
+                        }
+                    </style>
+                </head>
+                <body>
+                    <div class="header">
+                        <h1>${user.school_name || 'SEKOLAH DEMO INDONESIA'}</h1>
+                        <h2>Laporan Sarana & Prasarana</h2>
+                        <h3>${title}</h3>
+                    </div>
+                    
+                    <p>Dicetak pada: ${new Date().toLocaleString('id-ID')}</p>
+
+                    <table>
+                        <thead>
+                            <tr>${headers.map(h => `<th>${h}</th>`).join('')}</tr>
+                        </thead>
+                        <tbody>
+                            ${rows.join('')}
+                        </tbody>
+                    </table>
+
+                    <div class="footer">
+                        <p>Mengetahui,</p>
+                        <br><br><br>
+                        <p>Kepala Sarpras</p>
+                    </div>
+                </body>
+                </html>
+            `);
+            
+            printWindow.document.close();
+            printWindow.focus();
+            // Tunggu gambar/style load baru print
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 500);
+        }
+    </script>
+</body>
+</html>

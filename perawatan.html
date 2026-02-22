@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perawatan & Perbaikan - Sarpras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="md:ml-64 pt-16 min-h-screen">
+        <main class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Perawatan & Perbaikan</h1>
+                    <p class="text-sm text-slate-500">Laporan kerusakan dan maintenance aset sekolah.</p>
+                </div>
+                <button onclick="openModal()" class="bg-red-600 hover:bg-red-700 text-white px-4 py-2 rounded-lg text-sm shadow">
+                    <i class="fas fa-exclamation-triangle mr-2"></i> Lapor Kerusakan
+                </button>
+            </div>
+
+            <!-- Stats Card -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-yellow-400">
+                    <div class="text-xs text-slate-500">Dalam Perbaikan</div>
+                    <div class="text-xl font-bold text-yellow-600" id="statRepair">0</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-red-500">
+                    <div class="text-xs text-slate-500">Rusak Berat</div>
+                    <div class="text-xl font-bold text-red-600" id="statBroken">0</div>
+                </div>
+                <div class="bg-white p-4 rounded-lg shadow-sm border-l-4 border-green-500">
+                    <div class="text-xs text-slate-500">Selesai Bulan Ini</div>
+                    <div class="text-xl font-bold text-green-600" id="statDone">0</div>
+                </div>
+            </div>
+
+            <!-- Tabel Data -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold">
+                            <tr>
+                                <th class="p-4">Tanggal</th>
+                                <th class="p-4">Barang</th>
+                                <th class="p-4">Keluhan</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4">Biaya</th>
+                                <th class="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="maintenanceTable" class="text-sm divide-y divide-slate-100">
+                            <tr><td colspan="6" class="p-4 text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Form Lapor -->
+    <div id="modalForm" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden">
+            <div class="p-4 border-b bg-red-50 text-red-800">
+                <h3 class="font-bold text-lg">Input Laporan Kerusakan</h3>
+            </div>
+            <form id="formMaintenance" class="p-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Pilih Barang</label>
+                    <select id="itemSelect" class="w-full border p-2 rounded text-sm bg-white" required></select>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Deskripsi Kerusakan</label>
+                    <textarea id="issue" rows="3" class="w-full border p-2 rounded text-sm" placeholder="Contoh: Layar bergaris, kaki meja patah..." required></textarea>
+                </div>
+                
+                <div class="pt-4 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded">Kirim Laporan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        initLayout();
+
+        const user = JSON.parse(localStorage.getItem('sarpras_user'));
+
+        async function loadData() {
+            const tbody = document.getElementById('maintenanceTable');
+            
+            const { data, error } = await sb
+                .from('perawatan')
+                .select('*, inventaris(nama, kode)')
+                .eq('school_id', user.school_id)
+                .order('created_at', { ascending: false });
+
+            if (error) return;
+
+            // Hitung Stats Sederhana
+            const repairing = data.filter(d => d.status === 'Dalam Perbaikan').length;
+            const done = data.filter(d => d.status === 'Selesai').length;
+            
+            document.getElementById('statRepair').innerText = repairing;
+            document.getElementById('statDone').innerText = done;
+
+            tbody.innerHTML = data.map(item => {
+                let badgeClass = '';
+                if(item.status === 'Menunggu') badgeClass = 'bg-gray-100 text-gray-600';
+                else if(item.status === 'Dalam Perbaikan') badgeClass = 'bg-yellow-100 text-yellow-700';
+                else if(item.status === 'Selesai') badgeClass = 'bg-green-100 text-green-700';
+                else badgeClass = 'bg-red-100 text-red-700';
+
+                return `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="p-4 text-slate-500">${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
+                        <td class="p-4 font-bold text-slate-700">
+                            ${item.inventaris ? item.inventaris.nama : 'Unknown'}
+                            <div class="text-xs font-normal text-slate-400">${item.inventaris ? item.inventaris.kode : ''}</div>
+                        </td>
+                        <td class="p-4 text-slate-600">${item.keluhan}</td>
+                        <td class="p-4"><span class="px-2 py-1 rounded text-xs font-bold ${badgeClass}">${item.status}</span></td>
+                        <td class="p-4 text-slate-600">${item.biaya ? 'Rp ' + item.biaya.toLocaleString() : '-'}</td>
+                        <td class="p-4 text-center">
+                            ${item.status !== 'Selesai' ? `<button onclick="markDone('${item.id}')" class="text-blue-600 text-xs border border-blue-200 px-2 py-1 rounded hover:bg-blue-50">Selesaikan</button>` : '<i class="fas fa-check text-green-500"></i>'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function loadItems() {
+            const { data } = await sb.from('inventaris').select('id, nama, kode').eq('school_id', user.school_id);
+            const select = document.getElementById('itemSelect');
+            select.innerHTML = data.map(i => `<option value="${i.id}">${i.nama} (${i.kode})</option>`).join('');
+        }
+
+        document.getElementById('formMaintenance').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                school_id: user.school_id,
+                inventaris_id: document.getElementById('itemSelect').value,
+                pelapor_id: user.id,
+                pelapor_nama: user.name,
+                keluhan: document.getElementById('issue').value,
+                status: 'Menunggu' // Default status dokumen hal 37
+            };
+
+            const { error } = await sb.from('perawatan').insert([payload]);
+            if (!error) {
+                
+                // Update kondisi barang jadi "Rusak Ringan" di tabel inventaris
+                await sb.from('inventaris').update({ kondisi: 'Rusak Ringan' }).eq('id', payload.inventaris_id);
+
+                closeModal();
+                loadData();
+            } else {
+                alert(error.message);
+            }
+        });
+
+        async function markDone(id) {
+            const biaya = prompt("Masukkan biaya perbaikan (jika ada, tulis angka saja):", "0");
+            if (biaya === null) return;
+
+            const { error } = await sb.from('perawatan').update({
+                status: 'Selesai',
+                biaya: parseInt(biaya),
+                tanggal_selesai: new Date()
+            }).eq('id', id);
+
+            if(!error) loadData();
+        }
+
+        function openModal() { document.getElementById('modalForm').classList.remove('hidden'); loadItems(); }
+        function closeModal() { document.getElementById('modalForm').classList.add('hidden'); }
+
+        loadData();
+    </script>
+</body>
+</html>

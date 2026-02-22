@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Peminjaman - Sarpras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="md:ml-64 pt-16 min-h-screen">
+        <main class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Peminjaman Barang</h1>
+                    <p class="text-sm text-slate-500">Kelola sirkulasi barang inventaris sekolah.</p>
+                </div>
+                <!-- Tombol Simulasi untuk Demo -->
+                <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm">
+                    <i class="fas fa-plus mr-2"></i> Buat Peminjaman Baru
+                </button>
+            </div>
+
+            <!-- Tabs Filter Status -->
+            <div class="flex space-x-2 mb-6 overflow-x-auto">
+                <button onclick="filterStatus('all')" class="px-4 py-2 bg-white rounded-lg shadow-sm hover:bg-slate-50 text-sm font-medium border border-slate-200">Semua</button>
+                <button onclick="filterStatus('Menunggu')" class="px-4 py-2 bg-yellow-50 text-yellow-700 rounded-lg text-sm font-medium border border-yellow-200">Menunggu</button>
+                <button onclick="filterStatus('Dipinjam')" class="px-4 py-2 bg-blue-50 text-blue-700 rounded-lg text-sm font-medium border border-blue-200">Sedang Dipinjam</button>
+                <button onclick="filterStatus('Dikembalikan')" class="px-4 py-2 bg-green-50 text-green-700 rounded-lg text-sm font-medium border border-green-200">Selesai</button>
+            </div>
+
+            <!-- Tabel Data -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold">
+                            <tr>
+                                <th class="p-4">Tanggal</th>
+                                <th class="p-4">Peminjam</th>
+                                <th class="p-4">Barang</th>
+                                <th class="p-4">Tgl Kembali</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="loanTable" class="text-sm divide-y divide-slate-100">
+                            <tr><td colspan="6" class="p-4 text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Form Peminjaman Baru -->
+    <div id="modalForm" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden">
+            <div class="p-4 border-b bg-slate-50">
+                <h3 class="font-bold text-lg">Input Peminjaman Baru</h3>
+            </div>
+            <form id="formLoan" class="p-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Nama Peminjam</label>
+                    <input type="text" id="peminjamNama" class="w-full border p-2 rounded text-sm" placeholder="Nama Siswa/Guru" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Pilih Barang</label>
+                    <!-- Ini harusnya Select Option dinamis, kita pakai text dulu untuk demo -->
+                    <select id="barangId" class="w-full border p-2 rounded text-sm bg-white" required>
+                        <option value="">Loading barang...</option>
+                    </select>
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Tgl Pinjam</label>
+                        <input type="date" id="tglPinjam" class="w-full border p-2 rounded text-sm" required>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Tgl Kembali</label>
+                        <input type="date" id="tglKembali" class="w-full border p-2 rounded text-sm" required>
+                    </div>
+                </div>
+                
+                <div class="pt-4 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        initLayout();
+
+        const user = JSON.parse(localStorage.getItem('sarpras_user'));
+        let currentFilter = 'all';
+
+        // 1. Load Data Peminjaman
+        async function loadData() {
+            const tbody = document.getElementById('loanTable');
+            tbody.innerHTML = '<tr><td colspan="6" class="p-4 text-center">Loading...</td></tr>';
+
+            let query = sb
+                .from('peminjaman')
+                .select('*, inventaris(nama, kode)') // Join ke inventaris
+                .eq('school_id', user.school_id)
+                .order('created_at', { ascending: false });
+
+            if (currentFilter !== 'all') {
+                query = query.eq('status', currentFilter);
+            }
+
+            const { data, error } = await query;
+
+            if (error) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-red-500">${error.message}</td></tr>`;
+                return;
+            }
+
+            if (!data.length) {
+                tbody.innerHTML = `<tr><td colspan="6" class="p-4 text-center text-slate-400">Tidak ada data peminjaman.</td></tr>`;
+                return;
+            }
+
+            tbody.innerHTML = data.map(item => {
+                let statusBadge = '';
+                let actionBtn = '';
+
+                // Logika UI berdasarkan Status
+                if (item.status === 'Menunggu') {
+                    statusBadge = '<span class="px-2 py-1 bg-yellow-100 text-yellow-700 rounded text-xs font-bold">Menunggu</span>';
+                    actionBtn = `
+                        <button onclick="updateStatus('${item.id}', 'Dipinjam')" class="text-green-600 hover:bg-green-50 px-2 py-1 rounded text-xs border border-green-200 mr-1">Terima</button>
+                        <button onclick="updateStatus('${item.id}', 'Ditolak')" class="text-red-600 hover:bg-red-50 px-2 py-1 rounded text-xs border border-red-200">Tolak</button>
+                    `;
+                } else if (item.status === 'Dipinjam') {
+                    statusBadge = '<span class="px-2 py-1 bg-blue-100 text-blue-700 rounded text-xs font-bold">Dipinjam</span>';
+                    actionBtn = `
+                        <button onclick="updateStatus('${item.id}', 'Dikembalikan')" class="text-blue-600 hover:bg-blue-50 px-3 py-1 rounded text-xs border border-blue-200">Kembalikan</button>
+                    `;
+                } else if (item.status === 'Dikembalikan') {
+                    statusBadge = '<span class="px-2 py-1 bg-green-100 text-green-700 rounded text-xs font-bold">Selesai</span>';
+                    actionBtn = `<span class="text-slate-400 text-xs"><i class="fas fa-check"></i></span>`;
+                } else {
+                    statusBadge = '<span class="px-2 py-1 bg-red-100 text-red-700 rounded text-xs font-bold">Ditolak</span>';
+                    actionBtn = `<span class="text-slate-400 text-xs">-</span>`;
+                }
+
+                return `
+                    <tr class="hover:bg-slate-50 transition border-b border-slate-100">
+                        <td class="p-4 text-slate-500">${new Date(item.created_at).toLocaleDateString('id-ID')}</td>
+                        <td class="p-4 font-bold text-slate-700">${item.peminjam_nama}</td>
+                        <td class="p-4">
+                            <div class="text-sm font-medium">${item.barang_nama || (item.inventaris ? item.inventaris.nama : 'Unknown')}</div>
+                            <div class="text-xs text-slate-500">${item.inventaris ? item.inventaris.kode : '-'}</div>
+                        </td>
+                        <td class="p-4 text-slate-600">${item.tanggal_kembali || '-'}</td>
+                        <td class="p-4">${statusBadge}</td>
+                        <td class="p-4 text-center whitespace-nowrap">
+                            ${actionBtn}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 2. Load Dropdown Barang untuk Modal
+        async function loadInventoryOptions() {
+            const select = document.getElementById('barangId');
+            const { data } = await sb.from('inventaris')
+                .select('id, nama, kode')
+                .eq('school_id', user.school_id)
+                .eq('status', 'Tersedia'); // Hanya barang tersedia
+            
+            if (data) {
+                select.innerHTML = data.map(i => `<option value="${i.id}" data-name="${i.nama}">${i.nama} (${i.kode})</option>`).join('');
+            }
+        }
+
+        // 3. Update Status (Flow Peminjaman)
+        async function updateStatus(id, newStatus) {
+            if(!confirm(`Ubah status menjadi ${newStatus}?`)) return;
+
+            // Update status peminjaman
+            const { error } = await sb
+                .from('peminjaman')
+                .update({ status: newStatus })
+                .eq('id', id);
+
+            if (!error) {
+                // TODO: Update status barang di tabel inventaris juga (Tersedia <-> Dipinjam)
+                // Untuk simplisitas demo, kita refresh saja tabelnya
+                loadData();
+            } else {
+                alert(error.message);
+            }
+        }
+
+        // 4. Submit Peminjaman Baru
+        document.getElementById('formLoan').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const barangSelect = document.getElementById('barangId');
+            const barangId = barangSelect.value;
+            const barangNama = barangSelect.options[barangSelect.selectedIndex].text;
+            
+            const payload = {
+                school_id: user.school_id,
+                peminjam_nama: document.getElementById('peminjamNama').value,
+                inventaris_id: barangId,
+                barang_nama: barangNama, // Backup nama
+                tanggal_pinjam: document.getElementById('tglPinjam').value,
+                tanggal_kembali: document.getElementById('tglKembali').value,
+                status: 'Menunggu'
+            };
+
+            const { error } = await sb.from('peminjaman').insert([payload]);
+
+            if (!error) {
+                closeModal();
+                loadData();
+            } else {
+                alert('Gagal: ' + error.message);
+            }
+        });
+
+        function filterStatus(status) {
+            currentFilter = status;
+            loadData();
+        }
+
+        function openModal() { 
+            document.getElementById('modalForm').classList.remove('hidden'); 
+            loadInventoryOptions(); 
+        }
+        function closeModal() { document.getElementById('modalForm').classList.add('hidden'); document.getElementById('formLoan').reset(); }
+
+        loadData();
+    </script>
+	<!-- Letakkan sebelum penutup body -->
+	<script src="js/notification-service.js"></script>
+</body>
+</html>

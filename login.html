@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login - Sarpras Sekolah Digital</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-100 h-screen flex items-center justify-center">
+
+    <div class="bg-white p-8 rounded-xl shadow-lg w-full max-w-md">
+        <div class="text-center mb-8">
+            <h1 class="text-3xl font-bold text-blue-700">SARPRAS</h1>
+            <p class="text-slate-500">Sekolah Digital Management System</p>
+        </div>
+
+        <form id="loginForm" class="space-y-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Email Sekolah</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-3 text-slate-400"><i class="fas fa-envelope"></i></span>
+                    <input type="email" id="email" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="admin@sekolah.sch.id" required>
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Password</label>
+                <div class="relative">
+                    <span class="absolute left-3 top-3 text-slate-400"><i class="fas fa-lock"></i></span>
+                    <input type="password" id="password" class="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 outline-none" placeholder="••••••••" required>
+                </div>
+            </div>
+
+            <div id="alertError" class="hidden bg-red-100 text-red-700 p-3 rounded-lg text-sm text-center"></div>
+
+            <button type="submit" id="btnLogin" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-semibold py-2.5 rounded-lg transition duration-200">
+                Masuk Sistem
+            </button>
+			<!-- Di dalam form, atau di bawah form -->
+<div class="mt-4 text-center text-sm">
+    <span class="text-slate-500">Sekolah belum terdaftar?</span>
+    <a href="register.html" class="text-blue-600 font-bold hover:underline">Daftar Sekolah Baru</a>
+</div>
+        </form>
+        
+        <div class="mt-6 text-center text-xs text-slate-400">
+            <p>Demo Account: admin@sman1demo.sch.id / demo123</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script>
+        checkAuth(); // Redirect if already logged in
+
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const btn = document.getElementById('btnLogin');
+            const alert = document.getElementById('alertError');
+
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            btn.disabled = true;
+            alert.classList.add('hidden');
+
+            const result = await login(email, password);
+
+            if (result.success) {
+                window.location.href = 'index.html';
+            } else {
+                alert.textContent = result.message;
+                alert.classList.remove('hidden');
+                btn.innerHTML = 'Masuk Sistem';
+                btn.disabled = false;
+            }
+        });
+    </script>
+</body>
+</html>

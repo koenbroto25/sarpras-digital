@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Sarpras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <!-- Content Wrapper (Sidebar & Header injected by JS) -->
+    <div class="md:ml-64 pt-16 min-h-screen">
+        <main class="p-6">
+            <h1 class="text-2xl font-bold mb-6 text-slate-800">Dashboard Overview</h1>
+
+            <!-- Stats Cards -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-blue-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Total Aset</p>
+                            <h3 class="text-2xl font-bold" id="totalAsset">Loading...</h3>
+                        </div>
+                        <div class="bg-blue-100 p-3 rounded-full text-blue-600">
+                            <i class="fas fa-box fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-green-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Barang Tersedia</p>
+                            <h3 class="text-2xl font-bold" id="totalAvailable">Loading...</h3>
+                        </div>
+                        <div class="bg-green-100 p-3 rounded-full text-green-600">
+                            <i class="fas fa-check-circle fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-xl shadow-sm border-l-4 border-yellow-500">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Barang Rusak</p>
+                            <h3 class="text-2xl font-bold" id="totalDamaged">Loading...</h3>
+                        </div>
+                        <div class="bg-yellow-100 p-3 rounded-full text-yellow-600">
+                            <i class="fas fa-exclamation-triangle fa-lg"></i>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="bg-white p-6 rounded-xl shadow-sm">
+                <h2 class="text-lg font-bold mb-4">Aktivitas Terbaru</h2>
+                <div class="text-slate-500 text-sm text-center py-8">
+                    Belum ada aktivitas tercatat hari ini.
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- ... bagian atas html tetap sama ... -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        initLayout();
+
+        async function loadStats() {
+            const user = JSON.parse(localStorage.getItem('sarpras_user'));
+            
+            if (!user) return; // Guard clause
+
+            // PERBAIKAN: Menggunakan 'sb'
+            const { count: total } = await sb
+                .from('inventaris')
+                .select('*', { count: 'exact', head: true }) // head: true lebih ringan
+                .eq('school_id', user.school_id);
+            
+            // Hitung Barang Rusak
+            const { count: rusak } = await sb
+                .from('inventaris')
+                .select('*', { count: 'exact', head: true })
+                .eq('school_id', user.school_id)
+                .ilike('kondisi', '%Rusak%');
+
+            // Update UI
+            document.getElementById('totalAsset').innerText = total || 0;
+            document.getElementById('totalAvailable').innerText = ((total || 0) - (rusak || 0));
+            document.getElementById('totalDamaged').innerText = rusak || 0;
+        }
+
+        loadStats();
+    </script>
+<!-- Letakkan sebelum penutup body -->
+	<script src="js/notification-service.js"></script>
+</body>
+</html>

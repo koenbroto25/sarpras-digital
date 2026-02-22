@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengadaan Barang - Sarpras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="md:ml-64 pt-16 min-h-screen">
+        <main class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Pengadaan Aset</h1>
+                    <p class="text-sm text-slate-500">Usulan belanja, persetujuan, dan penerimaan barang.</p>
+                </div>
+                <button onclick="openModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm shadow">
+                    <i class="fas fa-plus mr-2"></i> Usulan Baru
+                </button>
+            </div>
+
+            <!-- Tabel Pengadaan -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold">
+                            <tr>
+                                <th class="p-4">Judul Pengadaan</th>
+                                <th class="p-4">Vendor</th>
+                                <th class="p-4">Estimasi Harga</th>
+                                <th class="p-4">Thn Anggaran</th>
+                                <th class="p-4">Status</th>
+                                <th class="p-4 text-center">Aksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="procurementTable" class="text-sm divide-y divide-slate-100">
+                            <tr><td colspan="6" class="p-4 text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Form Usulan -->
+    <div id="modalForm" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden">
+            <div class="p-4 border-b">
+                <h3 class="font-bold text-lg">Usulan Pengadaan Baru</h3>
+            </div>
+            <form id="formProcurement" class="p-4 space-y-4">
+                <input type="text" id="judul" class="w-full border p-2 rounded" placeholder="Nama Barang / Judul Pengadaan" required>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <select id="kategori" class="w-full border p-2 rounded bg-white">
+                        <option value="Elektronik">Elektronik</option>
+                        <option value="Meubelair">Meubelair</option>
+                        <option value="Alat Peraga">Alat Peraga</option>
+                    </select>
+                    <input type="text" id="vendor" class="w-full border p-2 rounded" placeholder="Nama Vendor/Toko">
+                </div>
+
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="number" id="harga" class="w-full border p-2 rounded" placeholder="Estimasi Harga (Rp)" required>
+                    <input type="text" id="tahun" class="w-full border p-2 rounded" placeholder="Tahun Anggaran" value="2024">
+                </div>
+
+                <textarea id="keterangan" class="w-full border p-2 rounded" rows="2" placeholder="Keterangan / Alasan kebutuhan"></textarea>
+
+                <div class="pt-4 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 border rounded">Batal</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Simpan Usulan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        initLayout();
+        const user = JSON.parse(localStorage.getItem('sarpras_user'));
+
+        async function loadData() {
+            const { data, error } = await sb.from('pengadaan')
+                .select('*')
+                .eq('school_id', user.school_id)
+                .order('created_at', { ascending: false });
+
+            const tbody = document.getElementById('procurementTable');
+            
+            if(error) return;
+
+            tbody.innerHTML = data.map(item => {
+                let statusColor = 'bg-gray-100 text-gray-700';
+                if(item.status === 'Disetujui') statusColor = 'bg-blue-100 text-blue-700';
+                if(item.status === 'Diterima') statusColor = 'bg-green-100 text-green-700';
+                if(item.status === 'Ditolak') statusColor = 'bg-red-100 text-red-700';
+
+                // Tombol aksi tergantung status
+                let actionBtn = '';
+                if(item.status === 'Direncanakan') {
+                    actionBtn = `<button onclick="updateStatus('${item.id}', 'Disetujui')" class="text-blue-600 hover:underline mr-2">Setujui</button>`;
+                } else if (item.status === 'Disetujui') {
+                    actionBtn = `<button onclick="receiveItem('${item.id}', '${item.judul}', ${item.estimasi_harga})" class="text-green-600 font-bold hover:underline border border-green-200 px-2 py-1 rounded bg-green-50">Terima Barang</button>`;
+                }
+
+                return `
+                    <tr class="hover:bg-slate-50 border-b">
+                        <td class="p-4 font-bold">${item.judul_pengadaan}</td>
+                        <td class="p-4 text-slate-600">${item.vendor || '-'}</td>
+                        <td class="p-4">${formatRupiah(item.estimasi_harga)}</td>
+                        <td class="p-4">${item.tahun_anggaran}</td>
+                        <td class="p-4"><span class="px-2 py-1 rounded text-xs font-bold ${statusColor}">${item.status}</span></td>
+                        <td class="p-4 text-center text-xs">
+                            ${actionBtn}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        document.getElementById('formProcurement').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                school_id: user.school_id,
+                judul_pengadaan: document.getElementById('judul').value,
+                kategori: document.getElementById('kategori').value,
+                vendor: document.getElementById('vendor').value,
+                estimasi_harga: document.getElementById('harga').value,
+                tahun_anggaran: document.getElementById('tahun').value,
+                status: 'Direncanakan',
+                keterangan: document.getElementById('keterangan').value
+            };
+            await sb.from('pengadaan').insert([payload]);
+            closeModal();
+            loadData();
+        });
+
+        async function updateStatus(id, status) {
+            if(!confirm(`Ubah status menjadi ${status}?`)) return;
+            await sb.from('pengadaan').update({ status: status }).eq('id', id);
+            loadData();
+        }
+
+        // Fitur Otomatis Masuk Inventaris (Sesuai Dokumen Hal 6 & 48)
+        async function receiveItem(id, nama, harga) {
+            const kodeBaru = prompt("Barang diterima. Masukkan Kode Inventaris Baru:", "INV-" + new Date().getFullYear() + "-XXX");
+            if(!kodeBaru) return;
+
+            // 1. Update status pengadaan jadi Diterima
+            await sb.from('pengadaan').update({ status: 'Diterima' }).eq('id', id);
+
+            // 2. Insert ke tabel inventaris otomatis
+            const { error } = await sb.from('inventaris').insert([{
+                school_id: user.school_id,
+                nama: nama,
+                kode: kodeBaru,
+                harga: harga,
+                kondisi: 'Baik',
+                status: 'Tersedia',
+                sumber_dana: 'Pengadaan Sekolah', // Default
+                tahun_pembelian: new Date().getFullYear()
+            }]);
+
+            if(!error) {
+                alert("Berhasil! Barang telah masuk ke Database Inventaris.");
+                loadData();
+            } else {
+                alert("Gagal insert inventaris: " + error.message);
+            }
+        }
+
+        function openModal() { document.getElementById('modalForm').classList.remove('hidden'); }
+        function closeModal() { document.getElementById('modalForm').classList.add('hidden'); }
+
+        loadData();
+    </script>
+</body>
+</html>

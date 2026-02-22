@@ -1,0 +1,11 @@
+sarpras-sekolah/
+├── css/
+│   └── styles.css
+├── js/
+│   ├── supabase-config.js
+│   ├── auth.js
+│   ├── app.js
+│   └── data-handler.js
+├── index.html        (Dashboard)
+├── login.html        (Halaman Login)
+└── inventaris.html   (Contoh Halaman Data)

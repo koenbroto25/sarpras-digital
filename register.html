@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Registrasi Sekolah - Sarpras Digital</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 min-h-screen flex items-center justify-center py-10 px-4">
+
+    <div class="bg-white w-full max-w-4xl rounded-2xl shadow-xl overflow-hidden flex flex-col md:flex-row">
+        
+        <!-- Left Side: Banner -->
+        <div class="md:w-5/12 bg-blue-900 text-white p-8 flex flex-col justify-between relative">
+            <div class="z-10">
+                <h1 class="text-3xl font-bold mb-2">SARPRAS<span class="text-blue-300">DIGITAL</span></h1>
+                <p class="text-blue-200 text-sm">Sistem Manajemen Aset Sekolah Terintegrasi</p>
+            </div>
+            <div class="z-10">
+                <ul class="space-y-3 text-sm">
+                    <li class="flex items-center"><i class="fas fa-check-circle mr-2 text-green-400"></i> Manajemen Inventaris & KIB</li>
+                    <li class="flex items-center"><i class="fas fa-check-circle mr-2 text-green-400"></i> Peminjaman & Mutasi Aset</li>
+                    <li class="flex items-center"><i class="fas fa-check-circle mr-2 text-green-400"></i> Laporan Otomatis (PDF)</li>
+                    <li class="flex items-center"><i class="fas fa-check-circle mr-2 text-green-400"></i> Multi-User & Audit Log</li>
+                </ul>
+            </div>
+            <div class="text-xs text-blue-400 z-10 mt-8">
+                &copy; 2024 Sarpras Digital Indonesia
+            </div>
+            <!-- Background Decoration -->
+            <div class="absolute top-0 right-0 -mr-10 -mt-10 w-40 h-40 bg-blue-800 rounded-full opacity-50"></div>
+            <div class="absolute bottom-0 left-0 -ml-10 -mb-10 w-40 h-40 bg-blue-600 rounded-full opacity-30"></div>
+        </div>
+
+        <!-- Right Side: Form -->
+        <div class="md:w-7/12 p-8 md:p-12">
+            <h2 class="text-2xl font-bold text-slate-800 mb-6">Daftarkan Sekolah Baru</h2>
+            
+            <form id="registerForm" class="space-y-4">
+                
+                <!-- Step 1: Data Sekolah -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">1. Identitas Sekolah</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Sekolah</label>
+                            <input type="text" id="schoolName" class="w-full border p-2 rounded focus:ring-2 focus:ring-blue-500" placeholder="Contoh: SMAN 1 Jakarta" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">NPSN</label>
+                                <input type="text" id="npsn" class="w-full border p-2 rounded" placeholder="8 Digit Angka" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Jenjang</label>
+                                <select id="jenjang" class="w-full border p-2 rounded bg-white">
+                                    <option value="SD">SD / MI</option>
+                                    <option value="SMP">SMP / MTs</option>
+                                    <option value="SMA">SMA / MA</option>
+                                    <option value="SMK">SMK</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Alamat Lengkap</label>
+                            <textarea id="address" rows="2" class="w-full border p-2 rounded" placeholder="Jl. Raya No. 1, Kota, Provinsi" required></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <hr class="border-slate-100 my-4">
+
+                <!-- Step 2: Akun Admin -->
+                <div>
+                    <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">2. Akun Administrator</h3>
+                    <div class="space-y-3">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Nama Admin Sarpras</label>
+                            <input type="text" id="adminName" class="w-full border p-2 rounded" placeholder="Nama Lengkap Operator" required>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">Email Login</label>
+                            <input type="email" id="email" class="w-full border p-2 rounded" placeholder="admin@sekolah.sch.id" required>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Password</label>
+                                <input type="password" id="password" class="w-full border p-2 rounded" placeholder="Minimal 6 karakter" required>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-slate-700 mb-1">Konfirmasi Password</label>
+                                <input type="password" id="confirmPassword" class="w-full border p-2 rounded" placeholder="Ulangi password" required>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Error Alert -->
+                <div id="alertError" class="hidden bg-red-100 text-red-700 p-3 rounded text-sm text-center"></div>
+
+                <button type="submit" id="btnRegister" class="w-full bg-blue-700 hover:bg-blue-800 text-white font-bold py-3 rounded-lg transition duration-200 mt-4">
+                    Daftarkan Sekolah
+                </button>
+                
+                <p class="text-center text-sm text-slate-500 mt-4">
+                    Sudah punya akun? <a href="login.html" class="text-blue-600 font-bold hover:underline">Login disini</a>
+                </p>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script>
+        document.getElementById('registerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const btn = document.getElementById('btnRegister');
+            const alertBox = document.getElementById('alertError');
+            
+            // Ambil Value
+            const schoolName = document.getElementById('schoolName').value;
+            const npsn = document.getElementById('npsn').value;
+            const jenjang = document.getElementById('jenjang').value;
+            const address = document.getElementById('address').value;
+            
+            const adminName = document.getElementById('adminName').value;
+            const email = document.getElementById('email').value;
+            const password = document.getElementById('password').value;
+            const confirmPass = document.getElementById('confirmPassword').value;
+
+            // Validasi Sederhana
+            if (password !== confirmPass) {
+                alertBox.classList.remove('hidden');
+                alertBox.innerText = "Password tidak cocok!";
+                return;
+            }
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memproses...';
+            alertBox.classList.add('hidden');
+
+            try {
+                // 1. Cek apakah NPSN sudah ada
+                const { data: cekNpsn } = await sb.from('schools').select('id').eq('npsn', npsn).single();
+                if (cekNpsn) throw new Error("NPSN Sekolah sudah terdaftar!");
+
+                // 2. Cek apakah Email sudah ada
+                const { data: cekEmail } = await sb.from('users').select('id').eq('email', email).single();
+                if (cekEmail) throw new Error("Email sudah digunakan!");
+
+                // 3. Insert Data Sekolah
+                const { data: school, error: errSchool } = await sb.from('schools').insert([{
+                    name: schoolName,
+                    npsn: npsn,
+                    jenjang: jenjang,
+                    address: address,
+                    email_sekolah: email // Default email sekolah = email admin
+                }]).select().single();
+
+                if (errSchool) throw new Error("Gagal mendaftarkan sekolah: " + errSchool.message);
+
+                // 4. Insert Data Admin User
+                const { error: errUser } = await sb.from('users').insert([{
+                    school_id: school.id,
+                    name: adminName,
+                    email: email,
+                    password_hash: password, // Note: In production use hashing!
+                    role: 'admin',
+                    is_active: true
+                }]);
+
+                if (errUser) {
+                    // Rollback: Hapus sekolah jika user gagal dibuat
+                    await sb.from('schools').delete().eq('id', school.id);
+                    throw new Error("Gagal membuat user admin: " + errUser.message);
+                }
+
+                // 5. Insert Default Settings
+                await sb.from('settings').insert([{
+                    school_id: school.id,
+                    tahun_ajaran: new Date().getFullYear() + "/" + (new Date().getFullYear()+1),
+                    semester: 'Ganjil',
+                    primary_color: '#1e40af'
+                }]);
+
+                // Sukses
+                alert("Registrasi Berhasil! Silakan login.");
+                window.location.href = 'login.html';
+
+            } catch (err) {
+                alertBox.classList.remove('hidden');
+                alertBox.innerText = err.message;
+                btn.disabled = false;
+                btn.innerHTML = 'Daftarkan Sekolah';
+            }
+        });
+    </script>
+</body>
+</html>

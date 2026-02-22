@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perpindahan Aset - Sarpras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="md:ml-64 pt-16 min-h-screen">
+        <main class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Mutasi / Perpindahan</h1>
+                    <p class="text-sm text-slate-500">Pindahkan aset antar ruangan & catat histori.</p>
+                </div>
+                <button onclick="openModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm shadow">
+                    <i class="fas fa-exchange-alt mr-2"></i> Mutasi Baru
+                </button>
+            </div>
+
+            <!-- Tabel Riwayat Mutasi -->
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="p-4 border-b bg-slate-50 font-bold text-slate-700">Riwayat Perpindahan Terakhir</div>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-white text-slate-600 uppercase text-xs font-semibold border-b">
+                            <tr>
+                                <th class="p-4">Tanggal</th>
+                                <th class="p-4">Barang</th>
+                                <th class="p-4">Dari Ruangan</th>
+                                <th class="p-4">Ke Ruangan</th>
+                                <th class="p-4">Alasan</th>
+                            </tr>
+                        </thead>
+                        <tbody id="mutationTable" class="text-sm divide-y divide-slate-100">
+                            <tr><td colspan="5" class="p-4 text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Form Mutasi -->
+    <div id="modalForm" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-lg overflow-hidden">
+            <div class="p-4 border-b bg-indigo-50 text-indigo-900">
+                <h3 class="font-bold text-lg">Form Perpindahan Barang</h3>
+            </div>
+            <form id="formMutation" class="p-4 space-y-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Pilih Barang</label>
+                    <select id="itemSelect" class="w-full border p-2 rounded text-sm bg-white" required onchange="updateOriginRoom()">
+                        <option value="">-- Pilih Barang --</option>
+                    </select>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Ruangan Asal</label>
+                        <input type="text" id="originRoomDisplay" class="w-full border p-2 rounded text-sm bg-slate-100" readonly>
+                        <input type="hidden" id="originRoomId">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-bold text-slate-600 mb-1">Ruangan Tujuan</label>
+                        <select id="targetRoom" class="w-full border p-2 rounded text-sm bg-white" required>
+                            <option value="">-- Pilih Tujuan --</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Alasan Perpindahan</label>
+                    <textarea id="reason" rows="2" class="w-full border p-2 rounded text-sm" placeholder="Contoh: Pindah kelas, perbaikan lab..." required></textarea>
+                </div>
+                
+                <div class="pt-4 border-t flex justify-end gap-2">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2 text-slate-600 hover:bg-slate-100 rounded">Batal</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 text-white hover:bg-indigo-700 rounded">Proses Pindah</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        initLayout();
+
+        const user = JSON.parse(localStorage.getItem('sarpras_user'));
+        let inventoryData = [];
+
+        async function loadData() {
+            // Load History
+            const { data, error } = await sb
+                .from('mutasi')
+                .select(`
+                    *,
+                    inventaris(nama, kode),
+                    ruangan_asal:ruangan_asal_id(nama),
+                    ruangan_tujuan:ruangan_tujuan_id(nama)
+                `)
+                .eq('school_id', user.school_id)
+                .order('created_at', { ascending: false });
+
+            const tbody = document.getElementById('mutationTable');
+            if (error) return;
+
+            tbody.innerHTML = data.map(m => `
+                <tr class="hover:bg-slate-50">
+                    <td class="p-4 text-slate-500">${new Date(m.tanggal_mutasi).toLocaleDateString('id-ID')}</td>
+                    <td class="p-4 font-bold text-slate-700">
+                        ${m.inventaris?.nama || '-'}
+                        <div class="text-xs font-normal text-slate-400">${m.inventaris?.kode || ''}</div>
+                    </td>
+                    <td class="p-4 text-red-600"><i class="fas fa-sign-out-alt mr-1"></i> ${m.ruangan_asal?.nama || 'Gudang'}</td>
+                    <td class="p-4 text-green-600"><i class="fas fa-sign-in-alt mr-1"></i> ${m.ruangan_tujuan?.nama || '-'}</td>
+                    <td class="p-4 text-slate-600 text-xs">${m.alasan}</td>
+                </tr>
+            `).join('');
+        }
+
+        async function loadOptions() {
+            // Load Inventaris
+            const invRes = await sb.from('inventaris').select('id, nama, kode, ruangan_id, ruangan(nama)').eq('school_id', user.school_id);
+            inventoryData = invRes.data || [];
+            
+            const itemSelect = document.getElementById('itemSelect');
+            itemSelect.innerHTML = '<option value="">-- Pilih Barang --</option>' + 
+                inventoryData.map(i => `<option value="${i.id}">${i.nama} (${i.kode})</option>`).join('');
+
+            // Load Ruangan
+            const roomRes = await sb.from('ruangan').select('id, nama').eq('school_id', user.school_id);
+            const targetRoom = document.getElementById('targetRoom');
+            targetRoom.innerHTML = '<option value="">-- Pilih Tujuan --</option>' + 
+                roomRes.data.map(r => `<option value="${r.id}">${r.nama}</option>`).join('');
+        }
+
+        function updateOriginRoom() {
+            const itemId = document.getElementById('itemSelect').value;
+            const item = inventoryData.find(i => i.id === itemId);
+            if(item) {
+                document.getElementById('originRoomId').value = item.ruangan_id;
+                document.getElementById('originRoomDisplay').value = item.ruangan?.nama || 'Tidak diketahui';
+            }
+        }
+
+        document.getElementById('formMutation').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const itemId = document.getElementById('itemSelect').value;
+            const originId = document.getElementById('originRoomId').value;
+            const targetId = document.getElementById('targetRoom').value;
+            const reason = document.getElementById('reason').value;
+
+            if(originId === targetId) return alert('Ruangan asal dan tujuan tidak boleh sama');
+
+            // 1. Catat Mutasi
+            const { error: errMutasi } = await sb.from('mutasi').insert([{
+                school_id: user.school_id,
+                inventaris_id: itemId,
+                ruangan_asal_id: originId || null,
+                ruangan_tujuan_id: targetId,
+                user_id: user.id,
+                alasan: reason
+            }]);
+
+            if(errMutasi) return alert(errMutasi.message);
+
+            // 2. Update Lokasi Barang di Tabel Inventaris (Otomatis)
+            const { error: errUpdate } = await sb.from('inventaris')
+                .update({ ruangan_id: targetId })
+                .eq('id', itemId);
+
+            if(!errUpdate) {
+                // 3. Catat Log Audit (Penting untuk Prinsip Akuntabel)
+                await sb.from('riwayat_barang').insert([{
+                    school_id: user.school_id,
+                    inventaris_id: itemId,
+                    user_id: user.id,
+                    user_name: user.name,
+                    jenis_aktivitas: 'Mutasi',
+                    keterangan: `Pindah ke ruangan ID: ${targetId}. Alasan: ${reason}`
+                }]);
+
+                alert('Barang berhasil dipindahkan!');
+                closeModal();
+                loadData();
+                loadOptions(); // Refresh data inventaris
+            }
+        });
+
+        function openModal() { document.getElementById('modalForm').classList.remove('hidden'); loadOptions(); }
+        function closeModal() { document.getElementById('modalForm').classList.add('hidden'); document.getElementById('formMutation').reset(); }
+
+        loadData();
+    </script>
+</body>
+</html>

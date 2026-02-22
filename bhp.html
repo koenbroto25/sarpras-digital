@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Barang Habis Pakai (ATK) - Sarpras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="md:ml-64 pt-16 min-h-screen">
+        <main class="p-6">
+            <div class="flex justify-between items-center mb-6">
+                <div>
+                    <h1 class="text-2xl font-bold text-slate-800">Stok Barang Habis Pakai (ATK)</h1>
+                    <p class="text-sm text-slate-500">Kertas, Spidol, Tinta, dll.</p>
+                </div>
+                <button onclick="openMasterModal()" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm shadow">
+                    <i class="fas fa-plus mr-2"></i> Item Baru
+                </button>
+            </div>
+
+            <!-- Kartu Peringatan Stok (Sesuai Dokumen Hal 7) -->
+            <div id="lowStockAlert" class="hidden bg-red-100 border-l-4 border-red-500 text-red-700 p-4 mb-6 rounded shadow-sm flex justify-between items-center">
+                <div>
+                    <p class="font-bold">Perhatian!</p>
+                    <p class="text-sm">Beberapa barang stoknya menipis di bawah batas minimum.</p>
+                </div>
+                <i class="fas fa-exclamation-circle text-2xl"></i>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-sm overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse">
+                        <thead class="bg-slate-100 text-slate-600 uppercase text-xs font-semibold">
+                            <tr>
+                                <th class="p-4">Nama Barang</th>
+                                <th class="p-4 text-center">Stok Saat Ini</th>
+                                <th class="p-4">Satuan</th>
+                                <th class="p-4">Min. Stok</th>
+                                <th class="p-4 text-center">Transaksi</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bhpTable" class="text-sm divide-y divide-slate-100">
+                            <tr><td colspan="5" class="p-4 text-center">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Master Data -->
+    <div id="modalMaster" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-md overflow-hidden">
+            <div class="p-4 border-b">
+                <h3 class="font-bold text-lg">Tambah Item ATK</h3>
+            </div>
+            <form id="formMaster" class="p-4 space-y-4">
+                <input type="text" id="namaBhp" class="w-full border p-2 rounded" placeholder="Nama Barang (mis: Kertas A4)" required>
+                <div class="grid grid-cols-2 gap-4">
+                    <input type="text" id="satuanBhp" class="w-full border p-2 rounded" placeholder="Satuan (Rim/Pcs)" required>
+                    <input type="number" id="minStok" class="w-full border p-2 rounded" placeholder="Min Stok (Alert)" value="5">
+                </div>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="document.getElementById('modalMaster').classList.add('hidden')" class="px-4 py-2 border rounded">Batal</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Transaksi (Masuk/Keluar) -->
+    <div id="modalTrans" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-md overflow-hidden">
+            <div class="p-4 border-b bg-slate-50 flex justify-between">
+                <h3 class="font-bold text-lg" id="transTitle">Update Stok</h3>
+                <button onclick="closeTransModal()" class="text-slate-400"><i class="fas fa-times"></i></button>
+            </div>
+            <form id="formTrans" class="p-4 space-y-4">
+                <input type="hidden" id="transBhpId">
+                <div class="flex gap-4 bg-slate-100 p-1 rounded-lg">
+                    <button type="button" onclick="setTransType('Masuk')" id="btnIn" class="flex-1 py-1 rounded shadow bg-white text-green-600 font-bold text-sm">Masuk (+)</button>
+                    <button type="button" onclick="setTransType('Keluar')" id="btnOut" class="flex-1 py-1 rounded text-slate-500 font-bold text-sm">Keluar (-)</button>
+                </div>
+                <input type="hidden" id="transType" value="Masuk">
+                
+                <div>
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Jumlah</label>
+                    <input type="number" id="transQty" class="w-full border p-2 rounded font-bold text-lg" min="1" required>
+                </div>
+                
+                <div id="receiverDiv" class="hidden">
+                    <label class="block text-xs font-bold text-slate-600 mb-1">Diambil Oleh / Untuk</label>
+                    <input type="text" id="transReceiver" class="w-full border p-2 rounded" placeholder="Nama Guru / Bagian">
+                </div>
+
+                <button type="submit" class="w-full bg-slate-800 text-white py-2 rounded font-bold hover:bg-slate-700">Simpan Transaksi</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        initLayout();
+
+        const user = JSON.parse(localStorage.getItem('sarpras_user'));
+
+        async function loadData() {
+            const { data, error } = await sb.from('barang_habis_pakai').select('*').eq('school_id', user.school_id).order('nama');
+            const tbody = document.getElementById('bhpTable');
+            let hasLowStock = false;
+
+            tbody.innerHTML = data.map(item => {
+                const isLow = item.stok_saat_ini <= item.stok_minimum;
+                if(isLow) hasLowStock = true;
+
+                return `
+                    <tr class="hover:bg-slate-50 border-b">
+                        <td class="p-4 font-bold text-slate-700">
+                            ${item.nama}
+                            ${isLow ? '<span class="ml-2 text-[10px] bg-red-100 text-red-600 px-1 rounded border border-red-200">Stok Menipis</span>' : ''}
+                        </td>
+                        <td class="p-4 text-center font-bold text-lg ${isLow ? 'text-red-600' : 'text-blue-600'}">${item.stok_saat_ini}</td>
+                        <td class="p-4 text-slate-500 text-sm">${item.satuan}</td>
+                        <td class="p-4 text-slate-500 text-sm">${item.stok_minimum}</td>
+                        <td class="p-4 text-center">
+                            <button onclick="openTransModal('${item.id}', '${item.nama}')" class="bg-white border border-slate-200 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded text-xs shadow-sm">
+                                <i class="fas fa-exchange-alt"></i> Update
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            if(hasLowStock) document.getElementById('lowStockAlert').classList.remove('hidden');
+            else document.getElementById('lowStockAlert').classList.add('hidden');
+        }
+
+        // --- Logic Master Item ---
+        function openMasterModal() { document.getElementById('modalMaster').classList.remove('hidden'); }
+        document.getElementById('formMaster').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                school_id: user.school_id,
+                nama: document.getElementById('namaBhp').value,
+                satuan: document.getElementById('satuanBhp').value,
+                stok_minimum: document.getElementById('minStok').value,
+                stok_saat_ini: 0
+            };
+            await sb.from('barang_habis_pakai').insert([payload]);
+            document.getElementById('modalMaster').classList.add('hidden');
+            loadData();
+        });
+
+        // --- Logic Transaksi ---
+        function openTransModal(id, nama) {
+            document.getElementById('modalTrans').classList.remove('hidden');
+            document.getElementById('transBhpId').value = id;
+            document.getElementById('transTitle').innerText = nama;
+            setTransType('Masuk'); // Reset default
+        }
+
+        function setTransType(type) {
+            document.getElementById('transType').value = type;
+            const btnIn = document.getElementById('btnIn');
+            const btnOut = document.getElementById('btnOut');
+            const receiverDiv = document.getElementById('receiverDiv');
+
+            if(type === 'Masuk') {
+                btnIn.className = "flex-1 py-1 rounded shadow bg-white text-green-600 font-bold text-sm transition";
+                btnOut.className = "flex-1 py-1 rounded text-slate-500 font-bold text-sm transition hover:bg-slate-50";
+                receiverDiv.classList.add('hidden');
+            } else {
+                btnOut.className = "flex-1 py-1 rounded shadow bg-white text-red-600 font-bold text-sm transition";
+                btnIn.className = "flex-1 py-1 rounded text-slate-500 font-bold text-sm transition hover:bg-slate-50";
+                receiverDiv.classList.remove('hidden');
+            }
+        }
+
+        document.getElementById('formTrans').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('transBhpId').value;
+            const type = document.getElementById('transType').value;
+            const qty = parseInt(document.getElementById('transQty').value);
+            const receiver = document.getElementById('transReceiver').value;
+
+            // 1. Ambil stok saat ini
+            const { data: current } = await sb.from('barang_habis_pakai').select('stok_saat_ini').eq('id', id).single();
+            
+            let newStock = current.stok_saat_ini;
+            if(type === 'Masuk') newStock += qty;
+            else {
+                if(newStock < qty) return alert('Stok tidak mencukupi!');
+                newStock -= qty;
+            }
+
+            // 2. Update Master Stok
+            await sb.from('barang_habis_pakai').update({ stok_saat_ini: newStock }).eq('id', id);
+
+            // 3. Catat History Transaksi
+            await sb.from('transaksi_bhp').insert([{
+                school_id: user.school_id,
+                bhp_id: id,
+                jenis: type,
+                jumlah: qty,
+                penerima: receiver
+            }]);
+
+            closeTransModal();
+            loadData();
+        });
+
+        function closeTransModal() { 
+            document.getElementById('modalTrans').classList.add('hidden'); 
+            document.getElementById('formTrans').reset(); 
+        }
+
+        loadData();
+    </script>
+</body>
+</html>

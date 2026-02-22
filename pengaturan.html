@@ -1,0 +1,161 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pengaturan - Sarpras</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body class="bg-slate-50 text-slate-800">
+
+    <div class="md:ml-64 pt-16 min-h-screen">
+        <main class="p-6">
+            <h1 class="text-2xl font-bold text-slate-800 mb-6">Pengaturan Sekolah</h1>
+
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                
+                <!-- Profil Sekolah -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <h3 class="font-bold text-lg mb-4 border-b pb-2">Profil Sekolah</h3>
+                    <form id="formSchool" class="space-y-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Nama Sekolah</label>
+                            <input type="text" id="schoolName" class="w-full border p-2 rounded bg-slate-50" readonly>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">NPSN</label>
+                            <input type="text" id="schoolNpsn" class="w-full border p-2 rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-600 mb-1">Alamat</label>
+                            <textarea id="schoolAddress" class="w-full border p-2 rounded"></textarea>
+                        </div>
+                        <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded text-sm">Simpan Profil</button>
+                    </form>
+                </div>
+
+                <!-- Manajemen User -->
+                <div class="bg-white p-6 rounded-xl shadow-sm">
+                    <div class="flex justify-between items-center mb-4 border-b pb-2">
+                        <h3 class="font-bold text-lg">Manajemen User</h3>
+                        <button onclick="document.getElementById('modalUser').classList.remove('hidden')" class="text-xs bg-slate-800 text-white px-2 py-1 rounded">
+                            <i class="fas fa-user-plus mr-1"></i> Tambah
+                        </button>
+                    </div>
+                    
+                    <div class="overflow-y-auto max-h-64">
+                        <table class="w-full text-left text-sm">
+                            <thead class="bg-slate-100">
+                                <tr>
+                                    <th class="p-2">Nama</th>
+                                    <th class="p-2">Role</th>
+                                    <th class="p-2 text-center">Aksi</th>
+                                </tr>
+                            </thead>
+                            <tbody id="userTable">
+                                <!-- User Data -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Modal Tambah User -->
+    <div id="modalUser" class="fixed inset-0 bg-black bg-opacity-50 hidden z-50 flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl w-full max-w-sm p-6">
+            <h3 class="font-bold text-lg mb-4">Tambah Pengguna Baru</h3>
+            <form id="formUser" class="space-y-3">
+                <input type="text" id="newUserName" class="w-full border p-2 rounded" placeholder="Nama Lengkap" required>
+                <input type="email" id="newUserEmail" class="w-full border p-2 rounded" placeholder="Email Login" required>
+                <input type="text" id="newUserPass" class="w-full border p-2 rounded" placeholder="Password" value="123456" required>
+                <select id="newUserRole" class="w-full border p-2 rounded bg-white">
+                    <option value="operator">Operator</option>
+                    <option value="kepala_sekolah">Kepala Sekolah</option>
+                    <option value="peminjam">Peminjam (Guru/Siswa)</option>
+                </select>
+                <div class="flex justify-end gap-2 pt-2">
+                    <button type="button" onclick="document.getElementById('modalUser').classList.add('hidden')" class="px-4 py-2 border rounded">Batal</button>
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded">Simpan</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="js/supabase-config.js"></script>
+    <script src="js/auth.js"></script>
+    <script src="js/app.js"></script>
+    <script>
+        checkAuth();
+        initLayout();
+        const user = JSON.parse(localStorage.getItem('sarpras_user'));
+
+        async function loadSettings() {
+            // Load School Data
+            const { data: school } = await sb.from('schools').select('*').eq('id', user.school_id).single();
+            if(school) {
+                document.getElementById('schoolName').value = school.name;
+                document.getElementById('schoolNpsn').value = school.npsn || '';
+                document.getElementById('schoolAddress').value = school.address || '';
+            }
+
+            // Load Users Data
+            const { data: users } = await sb.from('users').select('*').eq('school_id', user.school_id);
+            const tbody = document.getElementById('userTable');
+            tbody.innerHTML = users.map(u => `
+                <tr class="border-b">
+                    <td class="p-2">${u.name} <br> <span class="text-xs text-slate-400">${u.email}</span></td>
+                    <td class="p-2 capitalize text-xs">${u.role.replace('_', ' ')}</td>
+                    <td class="p-2 text-center">
+                        ${u.id !== user.id ? `<button onclick="delUser('${u.id}')" class="text-red-500 hover:text-red-700"><i class="fas fa-trash"></i></button>` : '<span class="text-xs text-green-500">You</span>'}
+                    </td>
+                </tr>
+            `).join('');
+        }
+
+        // Update Profil Sekolah
+        document.getElementById('formSchool').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const npsn = document.getElementById('schoolNpsn').value;
+            const address = document.getElementById('schoolAddress').value;
+            
+            await sb.from('schools').update({ npsn, address }).eq('id', user.school_id);
+            alert('Profil sekolah diperbarui!');
+        });
+
+        // Tambah User Baru
+        document.getElementById('formUser').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const payload = {
+                school_id: user.school_id,
+                name: document.getElementById('newUserName').value,
+                email: document.getElementById('newUserEmail').value,
+                password_hash: document.getElementById('newUserPass').value, // Plain for demo
+                role: document.getElementById('newUserRole').value,
+                is_active: true
+            };
+
+            const { error } = await sb.from('users').insert([payload]);
+            if(!error) {
+                document.getElementById('modalUser').classList.add('hidden');
+                document.getElementById('formUser').reset();
+                loadSettings();
+            } else {
+                alert("Gagal: " + error.message);
+            }
+        });
+
+        async function delUser(id) {
+            if(!confirm("Hapus user ini?")) return;
+            await sb.from('users').delete().eq('id', id);
+            loadSettings();
+        }
+
+        loadSettings();
+    </script>
+</body>
+</html>
