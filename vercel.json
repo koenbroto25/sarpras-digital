@@ -1,0 +1,19 @@
+{
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "rewrites": [
+    { "source": "/", "destination": "/index.html" },
+    { "source": "/login", "destination": "/login.html" },
+    { "source": "/register", "destination": "/register.html" },
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/inventaris", "destination": "/inventaris.html" },
+    { "source": "/peminjaman", "destination": "/peminjaman.html" },
+    { "source": "/ruangan", "destination": "/ruangan.html" },
+    { "source": "/perawatan", "destination": "/perawatan.html" },
+    { "source": "/pengadaan", "destination": "/pengadaan.html" },
+    { "source": "/bhp", "destination": "/bhp.html" },
+    { "source": "/perpindahan", "destination": "/perpindahan.html" },
+    { "source": "/laporan", "destination": "/laporan.html" },
+    { "source": "/pengaturan", "destination": "/pengaturan.html" }
+  ]
+}
